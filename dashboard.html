@@ -43,7 +43,7 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+            font-family: 'Times New Roman', Times, serif;
             background-color: var(--primary-bg);
             color: var(--text-primary);
             line-height: 1.6;
@@ -268,13 +268,19 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            position: relative;
         }
 
         .slide-display {
-            flex: 1;
+            position: sticky;
+            top: 0;
+            flex-shrink: 0;
             padding: 2rem;
             overflow-y: auto;
+            max-height: calc(100vh - 60px);
             animation: fadeIn var(--transition-speed) ease;
+            background: var(--primary-bg);
+            z-index: 10;
         }
 
         @keyframes fadeIn {
@@ -313,7 +319,7 @@
             border-radius: 8px;
             padding: 1.5rem;
             white-space: pre-wrap;
-            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            font-family: 'Times New Roman', Times, serif;
             font-size: 0.9rem;
             line-height: 1.7;
             overflow-x: auto;
@@ -501,7 +507,7 @@
             background: var(--tertiary-bg);
             padding: 0.25rem 0.5rem;
             border-radius: 4px;
-            font-family: monospace;
+            font-family: 'Times New Roman', Times, serif;
             font-size: 0.875rem;
         }
 
@@ -604,6 +610,7 @@
             <div class="nav-buttons">
                 <button class="btn" id="prevBtn" aria-label="Previous slide">← Prev</button>
                 <button class="btn" id="nextBtn" aria-label="Next slide">Next →</button>
+                <button class="btn" id="questionsBtn" aria-label="Handling Common Questions">Common Q&A</button>
                 <button class="btn" id="helpBtn" aria-label="Keyboard shortcuts">?</button>
             </div>
             <button class="btn panel-toggle" id="notesToggle" aria-label="Toggle notes panel">
@@ -691,990 +698,97 @@
     </div>
 
     <script>
-    // ===== SLIDE DATA (VERBATIM FROM PRESENTATION) =====
-    const slidesData = [
-        {
-            id: 1,
-            title: "Title",
-            body_text: `Privacy-Preserving Content-Based Image Retrieval:
-Cryptographic Foundations for Secure Cloud-Aided Similarity Search
-
-Eng: Ahmed Mohamed Elsayed
-PhD Research — Technical Presentation`,
-            speaker_notes_text: `"Good [morning/afternoon], everyone. Thank you for your time today.
-
-My name is Ahmed Mohamed Elsayed, and I will be presenting my PhD research on **Privacy-Preserving Content-Based Image Retrieval** — specifically, the cryptographic foundations that enable secure similarity search in cloud environments.
-
-[PAUSE — 2 seconds]
-
-Over the next [X] minutes, I will walk you through **two** core encryption approaches I have been investigating: first, a scheme called ASPE, and then, a more robust construction based on the Learning With Errors problem. I will also share where my current research stands and the specific technical challenges I am working to solve.
-
-[PAUSE — look at audience]
-
-Let's begin."
-
-**[CLICK to next slide]**`,
-            questions_text: "",
-            extra_notes_text: ""
-        },
-        {
-            id: 2,
-            title: "Research Context & Motivation",
-            body_text: `Problem Setting:
-• Cloud-based image retrieval requires outsourcing feature vectors to untrusted servers
-• Server must perform approximate nearest neighbor (ANN) search without learning:
-   - Content of stored images
-   - Content of user queries
-   - Similarity relationships between database entries
-
-Research Focus:
-• Secure Cloud-Aided Approximate Nearest Neighbor Search
-• Core challenge: Enabling distance-preserving operations in the encrypted domain`,
-            speaker_notes_text: `"So, what problem are we trying to solve?
-
-[PAUSE]
-
-Imagine you have a large collection of images — perhaps millions — and you want to store them in the cloud so users can search for visually similar images. The challenge is this: the cloud server is **untrusted**. We cannot assume it will protect our data.
-
-[PAUSE — gesture toward slide]
-
-Specifically, we need the server to perform similarity search — what we call **approximate nearest neighbor search** — **without** learning three things:
-
-First, the actual content of the stored images.
-Second, the content of user queries.
-And third, even the similarity relationships *between* images in the database.
-
-[PAUSE]
-
-This is the core of my research: enabling **distance-preserving operations** — the computations needed for similarity search — to happen entirely in the **encrypted domain**.
-
-[PAUSE — transition voice]
-
-Now, before we discuss encryption, we need to understand **what** we are encrypting. Let me show you the feature representation I am working with."
-
-**[CLICK to next slide]**`,
-            questions_text: "",
-            extra_notes_text: ""
-        },
-        {
-            id: 3,
-            title: "CLIP Embeddings",
-            body_text: `Contrastive Language-Image Pre-training (CLIP):
-• Produces semantically rich d-dimensional feature vectors (d = 512 or 768)
-• Vectors are L2-normalized: ||p||₂ = 1
-
-Similarity Measure:
-• For normalized vectors, cosine similarity equals inner product:
-
-   sim(p, q) = cos(θ) = (p · q) / (||p|| ||q||) = p · q
-
-Implication:
-• Secure similarity search requires preserving inner product relationships`,
-            speaker_notes_text: `"The feature representation I am using is called **CLIP** — Contrastive Language-Image Pre-training.
-
-CLIP is a neural network that takes an image and produces a **high-dimensional vector** — typically 512 or 768 dimensions — that captures the **semantic content** of that image.
-
-[PAUSE]
-
-Now, here is a crucial property: CLIP vectors are **normalized**. Their length is always equal to one.
-
-[PAUSE — point to formula]
-
-Why does this matter? Because for normalized vectors, **cosine similarity** — the standard measure for comparing images — simplifies to just the **dot product**. You can see the formula here: the denominator becomes one, so we are left with simply **p dot q**.
-
-[PAUSE]
-
-This is important because it tells us exactly what our encryption scheme needs to do. If we want to compare images securely, we need an encryption method that **preserves inner product relationships** in the encrypted domain.
-
-[PAUSE — transition voice]
-
-And that brings us to our first encryption scheme: ASPE."
-
-**[CLICK to next slide]**`,
-            questions_text: "",
-            extra_notes_text: ""
-        },
-        {
-            id: 4,
-            title: "ASPE — Overview",
-            body_text: `Asymmetric Scalar Product-Preserving Encryption (Wong et al., 2009)
-
-Design Principle:
-• Selectively preserves ONLY scalar products necessary for distance comparison
-
-Scalar Product Classification:
-┌──────────┬─────────────────────────────────┬────────────┐
-│ Type     │ Relationship                    │ Preserved? │
-├──────────┼─────────────────────────────────┼────────────┤
-│ Type-1   │ Database · Database (pᵢ · pⱼ)   │ ✗ Concealed│
-│ Type-2   │ Database · Query (pᵢ · q)       │ ✓ Preserved│
-│ Type-3   │ Query · Query (q · q)           │ ✗ Concealed│
-└──────────┴─────────────────────────────────┴────────────┘`,
-            speaker_notes_text: `"ASPE stands for **Asymmetric Scalar Product-Preserving Encryption**. It was introduced by Wong and colleagues in 2009, and it is specifically designed for secure nearest neighbor search.
-
-[PAUSE]
-
-The key idea — and this is elegant — is **selective preservation**.
-
-[PAUSE — gesture to table]
-
-Look at this table. There are three types of scalar products we might compute:
-
-**Type-1**: comparing two database points with each other.
-**Type-2**: comparing a database point with a query.
-**Type-3**: comparing a query with itself.
-
-[PAUSE]
-
-ASPE **conceals** Type-1 and Type-3 — this prevents an attacker from reconstructing the database or inferring query content.
-
-But it **preserves** Type-2 — and this is *exactly* what we need for similarity search. We can compare queries to database points without revealing anything else.
-
-[PAUSE — transition voice]
-
-Now let me show you **how** ASPE achieves this, starting with how it transforms the vectors."
-
-**[CLICK to next slide]**`,
-            questions_text: "",
-            extra_notes_text: ""
-        },
-        {
-            id: 5,
-            title: "ASPE — Vector Extension",
-            body_text: `Dimension Augmentation:
-• Original vectors p, q ∈ ℝᵈ are extended to ℝᵈ⁺¹
-
-Database Vector Extension:
-   p̂ = [p₁, p₂, ..., pᵈ, -½||p||²]ᵀ ∈ ℝᵈ⁺¹
-
-Query Vector Extension:
-   q̂ = [q₁, q₂, ..., qᵈ, r]ᵀ ∈ ℝᵈ⁺¹
-   
-   where r > 0 is a random positive scalar (fresh for each query)
-
-Extended Scalar Product:
-   p̂ · q̂ = p · q − (r/2)||p||²`,
-            speaker_notes_text: `"The first step in ASPE is **vector extension**.
-
-[PAUSE]
-
-We take our original d-dimensional vectors and extend them to d **plus one** dimensions.
-
-[PAUSE — point to database formula]
-
-For **database vectors**, we append a special value: **negative one-half times the squared norm** of the vector. So if we have a vector p, we add the term negative one-half times p squared.
-
-[PAUSE — point to query formula]
-
-For **query vectors**, we append a **random positive scalar** r. And importantly, this r is chosen **freshly for each query**. This randomization is part of what provides security.
-
-[PAUSE — point to result]
-
-Now, when we compute the scalar product of these extended vectors, we get: the original inner product **p dot q**, minus **r over 2** times the squared norm of p.
-
-[PAUSE]
-
-This extended scalar product encodes **both** the similarity information **and** the norm information we need for distance comparison — all in a single value.
-
-[PAUSE — transition voice]
-
-But we cannot send these extended vectors directly to the server. We need to encrypt them. That is where the matrix transformation comes in."
-
-**[CLICK to next slide]**`,
-            questions_text: "",
-            extra_notes_text: ""
-        },
-        {
-            id: 6,
-            title: "ASPE — Matrix Transformation",
-            body_text: `Secret Key Generation:
-• Generate random invertible matrix M ∈ ℝ⁽ᵈ⁺¹⁾ˣ⁽ᵈ⁺¹⁾
-• Matrix M is the secret key K
-
-Encryption Functions:
-
-   Database Encryption:    p' = Mᵀ · p̂
-   
-   Query Encryption:       q' = M⁻¹ · q̂
-
-Scalar Product Preservation Proof:
-
-   p' · q' = (Mᵀp̂)ᵀ · (M⁻¹q̂)
-           = p̂ᵀ M M⁻¹ q̂
-           = p̂ᵀ q̂
-           = p̂ · q̂  ✓`,
-            speaker_notes_text: `"Here is the core mechanism of ASPE.
-
-[PAUSE]
-
-The secret key is simply a **large, random, invertible matrix** M — with dimensions d plus one by d plus one.
-
-[PAUSE — point to encryption functions]
-
-Now, watch carefully. Database vectors and query vectors are encrypted **differently**:
-
-For **database** vectors, we multiply by **M transpose**.
-For **query** vectors, we multiply by **M inverse**.
-
-[PAUSE]
-
-This asymmetry is *deliberate* — and it is why the scheme is called **Asymmetric** Scalar Product-Preserving Encryption.
-
-[PAUSE — point to proof]
-
-Let me show you why this works. When we compute the scalar product of the encrypted vectors:
-
-We have M transpose p-hat, dotted with M inverse q-hat.
-Taking the transpose and rearranging, we get p-hat transpose, times M, times M inverse, times q-hat.
-
-[PAUSE — emphasize]
-
-And here is the key: **M times M inverse equals the identity matrix**. They cancel out.
-
-So we are left with just **p-hat dot q-hat** — the original extended scalar product, perfectly preserved.
-
-[PAUSE — transition voice]
-
-And this preserved scalar product is exactly what lets us compare distances in the encrypted domain."
-
-**[CLICK to next slide]**`,
-            questions_text: "",
-            extra_notes_text: ""
-        },
-        {
-            id: 7,
-            title: "ASPE — Distance Comparison in Encrypted Domain",
-            body_text: `Encrypted Comparison Protocol:
-• Given encrypted database points p'₁, p'₂ and encrypted query q':
-
-   (p'₁ − p'₂) · q' > 0  ⟺  d(p₂, q) > d(p₁, q)
-
-Derivation:
-   (p'₁ − p'₂) · q' = p'₁ · q' − p'₂ · q'
-                    = p̂₁ · q̂ − p̂₂ · q̂
-                    
-Expanding:
-   = (p₁ · q − r/2||p₁||²) − (p₂ · q − r/2||p₂||²)
-   = (p₁ − p₂) · q + r/2(||p₂||² − ||p₁||²)
-
-This is the standard distance comparison criterion.`,
-            speaker_notes_text: `"So how do we actually **use** this for search?
-
-[PAUSE — point to main formula]
-
-Here is the protocol. Given two encrypted database points and an encrypted query, we compute this expression: **p-prime-one minus p-prime-two, dotted with q-prime**.
-
-If the result is **positive**, then p-two is **farther** from the query than p-one.
-If the result is **negative**, then p-one is farther.
-
-[PAUSE]
-
-In other words, we can determine **which database point is closer to the query** — without decrypting anything.
-
-[PAUSE — gesture to derivation]
-
-The derivation is shown here. Because scalar products are preserved, this encrypted comparison reduces to exactly the same expression we would use for **unencrypted** distance comparison.
-
-[PAUSE]
-
-The server can rank all database points by distance to the query, return the top-k results — all while seeing only **encrypted** values.
-
-[PAUSE — slower, transition voice]
-
-Now... ASPE is elegant. And it works. But it has **limitations** that motivated me to explore a different approach.
-
-Let me explain."
-
-**[CLICK to next slide]**`,
-            questions_text: "",
-            extra_notes_text: ""
-        },
-        {
-            id: 8,
-            title: "Motivation for Lattice-Based Approaches",
-            body_text: `ASPE Limitations for Cloud Deployment:
-
-1. Deterministic encryption → leaks statistical patterns over large databases
-
-2. Vulnerable to Level-3 attacks (known-plaintext attacks)
-   • If attacker obtains plaintext-ciphertext pairs, key can be recovered
-
-3. No post-quantum security guarantees
-
-Alternative Direction — Lattice-Based Cryptography:
-• Provable security reductions to hard mathematical problems
-• Resistance to quantum attacks
-• Foundation: Learning With Errors (LWE) problem`,
-            speaker_notes_text: `"ASPE has three significant limitations.
-
-[PAUSE — count on fingers]
-
-**First**: the encryption is deterministic. The same input always produces the same output. Over a large database, this leaks statistical patterns that an attacker can exploit.
-
-**Second**: ASPE is vulnerable to what we call **Level-3 attacks** — known-plaintext attacks. If an attacker somehow obtains even a few pairs of original vectors and their encrypted versions, they can **recover the secret key**. In a cloud environment with multiple users, this is a serious concern.
-
-**Third**: there are no post-quantum security guarantees. As quantum computers advance, ASPE offers no protection.
-
-[PAUSE — transition voice, slightly slower]
-
-These limitations led me to investigate a fundamentally different approach: **lattice-based cryptography**.
-
-[PAUSE]
-
-Lattice-based schemes offer provable security — meaning we can mathematically prove that breaking the encryption is as hard as solving problems that have resisted attack for decades. They are also believed to be **resistant to quantum computers**.
-
-[PAUSE]
-
-The foundation of this approach is something called the **Learning With Errors** problem — LWE for short.
-
-Let me walk you through it."
-
-**[CLICK to next slide]**`,
-            questions_text: "",
-            extra_notes_text: ""
-        },
-        {
-            id: 9,
-            title: "LWE — The Hardness Foundation",
-            body_text: `The Problem with Exact Linear Systems:
-
-Consider recovering secret vector s = [x, y, z, w]ᵀ from:
-
-   10x + 5y + 2z − 3w = 154
-   −2x + 12y + 0z + 8w = 320
-
-In matrix form: As = b
-
-Vulnerability:
-• Standard system of linear equations
-• Solvable instantly via Gaussian elimination
-• Complexity: O(n³)
-
-Conclusion:
-• Exact equations CANNOT hide the secret — system is trivially invertible`,
-            speaker_notes_text: `"To understand why LWE is hard, let us first see why **ordinary** linear equations are **easy**.
-
-[PAUSE — point to equations]
-
-Suppose I have a secret vector s with four components: x, y, z, w. And I give you these two equations.
-
-[PAUSE]
-
-Now, if you remember your linear algebra, this is just a system of linear equations. In matrix form: **A times s equals b**.
-
-[PAUSE — emphasize]
-
-Any computer can solve this **instantly**. Gaussian elimination. Matrix inversion. The complexity is just O of n cubed — polynomial time.
-
-[PAUSE]
-
-So if I tried to use exact linear equations to hide my secret key, I would fail completely. You would recover s in milliseconds.
-
-[PAUSE — transition voice]
-
-The question is: can we modify this system to make it **hard**?
-
-[PAUSE]
-
-The answer is yes — and the modification is surprisingly simple."
-
-**[CLICK to next slide]**`,
-            questions_text: "",
-            extra_notes_text: ""
-        },
-        {
-            id: 10,
-            title: "LWE — Introducing Computational Hardness",
-            body_text: `The LWE Modification:
-• Add small random ERROR term eᵢ to each equation:
-
-   ⟨aᵢ, s⟩ + eᵢ = bᵢ
-
-Parameters:
-• aᵢ ∈ ℤqⁿ — random coefficient vector
-• s ∈ ℤqⁿ — secret vector  
-• eᵢ ← χ — sampled from error distribution (small, close to 0)
-• All operations mod q
-
-Formal Definition (Decision-LWE):
-Given m samples (aᵢ, bᵢ), distinguish between:
-   1. bᵢ = ⟨aᵢ, s⟩ + eᵢ (mod q)  — structured (has hidden secret)
-   2. bᵢ ← ℤq uniformly random    — purely random
-
-This is believed to be computationally infeasible.`,
-            speaker_notes_text: `"Here is the LWE modification.
-
-[PAUSE — point to equation]
-
-Instead of exact equations, we add a small **random error** term — e-i — to each equation.
-
-[PAUSE]
-
-The error is sampled from a distribution that produces values **close to zero** — small integers like negative 2, negative 1, 0, 1, 2.
-
-[PAUSE]
-
-Also, everything is computed **modulo q** — a large integer. This adds another layer of complexity.
-
-[PAUSE — point to definition]
-
-The formal problem is called **Decision-LWE**, and it asks: given many of these noisy equations, can you tell whether they hide a secret vector s, or whether they are just **random noise**?
-
-[PAUSE — emphasize]
-
-The remarkable fact is: **no one knows how to do this efficiently**. Not classical computers. Not quantum computers. The best known algorithms take **exponential time**.
-
-[PAUSE — transition voice]
-
-Let me make this concrete with a numerical example."
-
-**[CLICK to next slide]**`,
-            questions_text: "",
-            extra_notes_text: ""
-        },
-        {
-            id: 11,
-            title: "LWE — Numerical Example",
-            body_text: `Setup:
-• Modulus: q = 89
-• Secret vector: s = [x, y, z, w]ᵀ (unknown to attacker)
-
-Without Errors (Trivially Solvable):
-   10x + 5y + 2z − 3w ≡ 154 (mod 89)
-   −2x + 12y + 0z + 8w ≡ 320 (mod 89)
-   → Solve with Gaussian elimination ✓
-
-With Errors (Computationally Hard):
-   10x + 5y + 2z − 3w + 2 ≡ 156 (mod 89)    [e₁ = +2]
-   −2x + 12y + 0z + 8w − 2 ≡ 318 (mod 89)   [e₂ = −2]
-
-The Attacker's Dilemma:
-• Observes only (156, 318, ...) — not the true (154, 320, ...)
-• Cannot separate "signal" from "noise"
-• Modular arithmetic prevents approximation techniques`,
-            speaker_notes_text: `"Let us work through a concrete example.
-
-[PAUSE]
-
-Suppose our modulus q is 89, and we have a secret vector s that the attacker wants to recover.
-
-[PAUSE — point to first system]
-
-**Without errors**, the attacker sees these equations. They give the exact values 154 and 320. As I said, Gaussian elimination solves this instantly.
-
-[PAUSE — point to second system]
-
-**With errors**, we add small noise. Here, e-one equals **plus 2**, and e-two equals **minus 2**. Now the attacker sees 156 and 318 instead.
-
-[PAUSE — emphasize]
-
-Here is the attacker's dilemma. They see 156. But is that because the true answer was 154 plus an error of 2? Or was the true answer 155 plus an error of 1? Or 156 plus an error of 0?
-
-[PAUSE]
-
-They **cannot tell**. They cannot separate the signal from the noise. And the modular arithmetic — the wrapping around at 89 — prevents them from using approximation or rounding techniques.
-
-[PAUSE — slower]
-
-Give them a thousand equations with small errors, and they **still** cannot recover s. This is the hardness of LWE.
-
-[PAUSE — transition voice]
-
-Now let me show you how we build an encryption scheme on top of this."
-
-**[CLICK to next slide]**`,
-            questions_text: "",
-            extra_notes_text: ""
-        },
-        {
-            id: 12,
-            title: "LWE — Key Generation",
-            body_text: `Public Key Generation (Alice):
-
-1. Secret Key: Sample s ← ℤqⁿ uniformly at random
-
-2. Public Matrix: Generate A ← ℤqᵐˣⁿ uniformly at random
-
-3. Error Vector: Sample e ← χᵐ from error distribution
-
-4. Public Vector: Compute b = As + e (mod q)
-
-Key Distribution:
-• Secret Key: SK = s
-• Public Key: PK = (A, b)
-
-Security Basis:
-• Public key (A, b) is computationally indistinguishable from (A, u)
-  where u is uniformly random
-• This follows directly from the LWE assumption`,
-            speaker_notes_text: `"Let me walk you through key generation step by step.
-
-[PAUSE]
-
-Alice — the data owner — starts by sampling a **secret vector s** uniformly at random from integers mod q.
-
-[PAUSE]
-
-Next, she generates a large **random matrix A**. This will be public.
-
-[PAUSE]
-
-Then — and this is crucial — she samples an **error vector e** from the error distribution. Small random values.
-
-[PAUSE — point to computation]
-
-Finally, she computes **b equals A times s, plus e, mod q**.
-
-[PAUSE]
-
-The **secret key** is just s.
-The **public key** is the pair: the matrix A, and the vector b.
-
-[PAUSE — point to security basis]
-
-Why is this secure? Because by the LWE assumption, the pair (A, b) is **indistinguishable** from (A, u) where u is just random noise. An attacker looking at the public key cannot tell that there is a hidden structure — a hidden secret s — underneath.
-
-[PAUSE — transition voice]
-
-Now let us see how Bob uses this public key to encrypt a message."
-
-**[CLICK to next slide]**`,
-            questions_text: "",
-            extra_notes_text: ""
-        },
-        {
-            id: 13,
-            title: "LWE — Encryption Protocol",
-            body_text: `Objective: Bob encrypts a single bit μ ∈ {0, 1} for Alice
-
-Step 1 — Subset Selection and Aggregation:
-• Sample random binary vector r ← {0, 1}ᵐ
-• Compute:
-     u = Aᵀr ∈ ℤqⁿ
-     v' = bᵀr = ⟨b, r⟩ ∈ ℤq
-
-Step 2 — Message Encoding:
-• Encode the bit μ:
-     v = v' + μ · ⌊q/2⌋ (mod q)
-
-Ciphertext: CT = (u, v)
-
-Intuition:
-• If μ = 0: v ≈ ⟨u, s⟩ + esum
-• If μ = 1: v ≈ ⟨u, s⟩ + esum + ⌊q/2⌋`,
-            speaker_notes_text: `"For encryption, let us say Bob wants to send a single bit — zero or one — to Alice.
-
-[PAUSE]
-
-**Step one**: Bob randomly selects a subset of Alice's public equations. Mathematically, he samples a binary vector r — zeros and ones — and uses it to create weighted sums.
-
-He computes **u** as A-transpose times r.
-And **v-prime** as b-transpose times r — essentially summing up selected entries of b.
-
-[PAUSE — point to step 2]
-
-**Step two**: Bob encodes his message bit. If he is sending **zero**, he uses v-prime as is. If he is sending **one**, he adds **half the modulus** — floor of q over 2 — to v-prime.
-
-[PAUSE]
-
-The ciphertext is just the pair: u and v.
-
-[PAUSE — point to intuition]
-
-Here is the intuition. Because of how the public key was constructed, v encodes either a value **close to zero** if the bit is zero, or a value **close to half the modulus** if the bit is one. The accumulated errors keep it from being exact — but the gap is large enough to distinguish.
-
-[PAUSE — transition voice]
-
-Let me show you how Alice decrypts."
-
-**[CLICK to next slide]**`,
-            questions_text: "",
-            extra_notes_text: ""
-        },
-        {
-            id: 14,
-            title: "LWE — Decryption Protocol",
-            body_text: `Input: Alice receives ciphertext CT = (u, v)
-
-Decryption Computation:
-   Δ = v − ⟨u, s⟩ (mod q)
-
-Analysis:
-   Δ = (⟨b, r⟩ + μ · ⌊q/2⌋) − ⟨Aᵀr, s⟩
-     = ⟨As + e, r⟩ + μ · ⌊q/2⌋ − ⟨Aᵀr, s⟩
-     = ⟨e, r⟩ + μ · ⌊q/2⌋
-     = esum + μ · ⌊q/2⌋
-
-Decision Rule:
-• If Δ close to 0 (|Δ| < q/4):     Output μ = 0
-• If Δ close to q/2 (|Δ − q/2| < q/4):  Output μ = 1
-
-Example (q = 89, ⌊q/2⌋ = 44):
-• Δ ∈ {0,1,...,22} ∪ {67,...,88} → decode as 0
-• Δ ∈ {23,...,66} → decode as 1`,
-            speaker_notes_text: `"Alice receives the ciphertext — the pair u and v.
-
-[PAUSE]
-
-She computes **delta**: v minus the inner product of u with her **secret key s**.
-
-[PAUSE — point to analysis]
-
-Let me walk through the algebra. We substitute the definitions... expand... and notice that the A-s terms **cancel out**.
-
-[PAUSE — emphasize]
-
-What remains is just: **e-sum** — the accumulated error — **plus** mu times floor of q over 2.
-
-[PAUSE — point to decision rule]
-
-So if the original bit was **zero**, delta is just the small error — close to zero.
-If the original bit was **one**, delta is the small error **plus 44** — close to half of 89.
-
-[PAUSE]
-
-The error is small — maybe plus or minus 5. So Alice can easily distinguish: values near zero mean bit zero; values near 44 mean bit one.
-
-[PAUSE — gesture to example]
-
-In our example with q equals 89, anything below 22 or above 67 decodes as zero. Anything in the middle decodes as one.
-
-[PAUSE — transition voice]
-
-Now, this shows LWE encryption for a **single bit**. For my research, I need to encrypt **high-dimensional image features**. And that brings us to a key challenge."
-
-**[CLICK to next slide]**`,
-            questions_text: "",
-            extra_notes_text: ""
-        },
-        {
-            id: 15,
-            title: "Integer Quantization Challenge",
-            body_text: `The Integration Problem:
-• CLIP embeddings are floating-point: p ∈ ℝᵈ with ||p||₂ = 1
-• LWE requires integer arithmetic: p ∈ ℤqᵈ
-
-Quantization Procedure:
-
-1. Scaling: Multiply by precision parameter γ
-      p̃ᵢ = γ · pᵢ
-
-2. Rounding: Convert to integers
-      p̂ᵢ = ⌊p̃ᵢ⌉ ∈ ℤ
-
-3. Modular Reduction: Map to ℤq
-      p'ᵢ = p̂ᵢ (mod q)
-
-Trade-off:
-• Larger γ → Higher precision, but larger ciphertexts
-• Smaller γ → More quantization error, retrieval accuracy loss`,
-            speaker_notes_text: `"Here is a central challenge I am currently working on.
-
-[PAUSE]
-
-CLIP embeddings are **floating-point numbers** — real values between negative one and one.
-
-But LWE encryption requires **integers**. All the arithmetic happens in Z-q — integers modulo q.
-
-[PAUSE — point to procedure]
-
-So I need a **quantization procedure** to bridge this gap.
-
-[PAUSE]
-
-**Step one**: Scale the embedding by a precision parameter **gamma**. If my original value is 0.75 and gamma is 1000, I get 750.
-
-**Step two**: Round to the nearest integer.
-
-**Step three**: Reduce modulo q to fit within the finite field.
-
-[PAUSE — point to trade-off]
-
-The challenge is the **trade-off**. A larger gamma gives me more precision — I can distinguish 0.751 from 0.752. But it also means larger numbers, larger ciphertexts, and more noise accumulation in the encryption.
-
-A smaller gamma means more quantization error — I might round 0.751 and 0.759 to the same integer, losing retrieval accuracy.
-
-[PAUSE — transition voice]
-
-The critical question is: does this quantization preserve the similarity relationships we need for search?
-
-Let me address that."
-
-**[CLICK to next slide]**`,
-            questions_text: "",
-            extra_notes_text: ""
-        },
-        {
-            id: 16,
-            title: "Preserving Cosine Similarity Under Quantization",
-            body_text: `Original Cosine Similarity (Normalized Vectors):
-   sim(p, q) = p · q = Σᵢ pᵢqᵢ
-
-Quantized Inner Product:
-   sim(p̂, q̂) = Σᵢ p̂ᵢq̂ᵢ = Σᵢ ⌊γpᵢ⌉ · ⌊γqᵢ⌉
-
-Error Analysis:
-• Let εᵢ = p̂ᵢ − γpᵢ (rounding error, |εᵢ| ≤ 0.5)
-• Quantized product expands to:
-
-   p̂ · q̂ = γ²(p · q) + γΣᵢ(pᵢδᵢ + qᵢεᵢ) + Σᵢεᵢδᵢ
-            \\_____/   \\__________________/   \\_____/
-            scaled      cross terms         noise
-            similarity
-
-Ranking Preservation Condition:
-   sign(sim(p₁,q) − sim(p₂,q)) = sign(sim(p̂₁,q̂) − sim(p̂₂,q̂))
-   
-• Holds when quantization error << similarity gap between candidates`,
-            speaker_notes_text: `"Let me show you the mathematical analysis.
-
-[PAUSE — point to original]
-
-The original cosine similarity is just the sum of products: p-i times q-i.
-
-[PAUSE — point to quantized]
-
-After quantization, we are computing the sum of **rounded** products.
-
-[PAUSE — point to error analysis]
-
-Let epsilon-i be the rounding error for each component — bounded by plus or minus 0.5.
-
-When we expand the quantized inner product, we get **three terms**:
-
-First, **gamma squared times the original similarity** — this is the signal we want.
-
-Second, **cross terms** that mix the original values with the rounding errors.
-
-Third, pure **noise** — products of rounding errors with each other.
-
-[PAUSE — point to condition]
-
-For **ranking preservation** — which is what we need for k-NN search — we need the **sign** of the similarity difference to be preserved.
-
-[PAUSE — emphasize]
-
-This holds when the quantization error is **small compared to the gap** between candidates. If two images have very different similarities to the query, quantization will not flip their ranking. But if two images have almost identical similarities, quantization might introduce errors.
-
-[PAUSE — transition voice]
-
-With this understanding, let me show you how all the pieces fit together in my proposed scheme."
-
-**[CLICK to next slide]**`,
-            questions_text: "",
-            extra_notes_text: ""
-        },
-        {
-            id: 17,
-            title: "Proposed Scheme — High-Level Architecture",
-            body_text: `┌─────────────────────────────────────────────────────────────┐
-│                      DATA OWNER                             │
-│  Image → CLIP → Normalize → Quantize → LWE Encrypt          │
-│                                    ↓                        │
-│                          Encrypted Database                 │
-└─────────────────────────────────────────────────────────────┘
-                              ↓ Upload
-┌─────────────────────────────────────────────────────────────┐
-│                      CLOUD SERVER                           │
-│  Stores: { E(p̂₁), E(p̂₂), ..., E(p̂ₙ) }                       │
-│  Receives: E(q̂)                                             │
-│  Computes: Encrypted similarity scores                      │
-│  Returns: Top-k encrypted indices                           │
-└─────────────────────────────────────────────────────────────┘
-                              ↑ Query
-┌─────────────────────────────────────────────────────────────┐
-│                      QUERY USER                             │
-│  Query Image → CLIP → Normalize → Quantize → LWE Encrypt    │
-│                                    ↓                        │
-│                              E(q̂) → Server                  │
-└─────────────────────────────────────────────────────────────┘`,
-            speaker_notes_text: `"Here is how the complete system works.
-
-[PAUSE — point to top box]
-
-The **data owner** takes each image, extracts the CLIP embedding, normalizes it, **quantizes** it to integers, and then applies **LWE encryption**. The encrypted database is uploaded to the cloud.
-
-[PAUSE — point to middle box]
-
-The **cloud server** stores all these encrypted vectors. It never sees the original images or features — only ciphertexts.
-
-[PAUSE — point to bottom box]
-
-When a **user** wants to search, they follow the same pipeline: CLIP, normalize, quantize, LWE encrypt. They send their encrypted query to the server.
-
-[PAUSE — gesture across all boxes]
-
-The server computes encrypted similarity scores — using the LWE structure to perform comparisons in the encrypted domain — and returns the indices of the top-k results.
-
-[PAUSE]
-
-At **no point** does the server learn the image content, the query content, or the true similarity values. It operates entirely on encrypted data.
-
-[PAUSE — transition voice]
-
-Now let me summarize why this LWE-based approach is superior to ASPE."
-
-**[CLICK to next slide]**`,
-            questions_text: "",
-            extra_notes_text: ""
-        },
-        {
-            id: 18,
-            title: "Security Analysis — Comparison",
-            body_text: `┌─────────────────────────────────┬──────────┬─────────────────┐
-│ Attack Type                     │   ASPE   │ LWE-Based       │
-├─────────────────────────────────┼──────────┼─────────────────┤
-│ Ciphertext-only (Level-1)       │ ✓ Secure │ ✓ Secure        │
-│ Known-sample (Level-2)          │ ✓ Secure │ ✓ Secure        │
-│ Known-plaintext (Level-3)       │ ✗ Vulnerable │ ✓ Secure    │
-│ Quantum Adversary               │ ✗ Vulnerable │ ✓ Secure    │
-└─────────────────────────────────┴──────────┴─────────────────┘
-
-LWE Security Foundation:
-• Breaking scheme → Solving Decision-LWE
-• Solving Decision-LWE → Solving worst-case lattice problems (GapSVP, SIVP)
-• Best known attacks: 2^O(n) — exponential in dimension
-• No efficient quantum algorithm known`,
-            speaker_notes_text: `"Let me make the comparison explicit.
-
-[PAUSE — point to table row by row]
-
-Against **ciphertext-only attacks** — where the adversary only sees encrypted data — both schemes are secure.
-
-Against **known-sample attacks** — where the adversary has some plaintext-ciphertext pairs from a *different* key — both schemes are secure.
-
-[PAUSE — emphasize]
-
-But against **known-plaintext attacks** — where the adversary has pairs from the *same* key — ASPE **fails**. The key can be recovered. The LWE-based scheme **remains secure**.
-
-And against **quantum adversaries** — ASPE offers no protection, while LWE is believed to be **quantum-resistant**.
-
-[PAUSE — point to foundation]
-
-The security of LWE reduces to well-studied lattice problems. Breaking LWE means solving problems like the **Shortest Vector Problem** — and the best known algorithms, classical or quantum, take **exponential time** in the dimension.
-
-[PAUSE — transition voice]
-
-Let me now summarize where my research stands."
-
-**[CLICK to next slide]**`,
-            questions_text: "",
-            extra_notes_text: ""
-        },
-        {
-            id: 19,
-            title: "Research Progress Summary",
-            body_text: `Completed:
-✓ Comprehensive literature review on privacy-preserving CBIR
-✓ Implementation and validation of ASPE scheme
-✓ Theoretical analysis of LWE-based constructions
-✓ Investigation of CLIP embedding properties
-
-In Progress:
-→ Integer quantization methods preserving cosine similarity
-→ Security analysis grounded in LWE hardness assumption
-→ Drafting research proposal with formal problem definition
-
-Planned:
-○ Prototype implementation on benchmark datasets (UKBench, Oxford 5K)
-○ Empirical evaluation of accuracy vs. security parameters
-○ Paper submission`,
-            speaker_notes_text: `"Let me summarize my progress.
-
-[PAUSE — point to completed]
-
-I have **completed** a comprehensive literature review. I have **implemented and validated** the ASPE scheme to understand its mechanics and limitations firsthand. I have developed a **theoretical understanding** of LWE-based constructions, as I have presented today. And I have investigated the specific properties of CLIP embeddings relevant to cryptographic integration.
-
-[PAUSE — point to in progress]
-
-I am **currently** working on the integer quantization methods — how to convert floating-point embeddings to integers while preserving similarity rankings. I am conducting security analysis to formally ground my scheme in the LWE hardness assumption. And I am actively **drafting my research proposal** with a precise problem definition.
-
-[PAUSE — point to planned]
-
-**Next**, I will build a prototype and evaluate it on standard benchmarks — UKBench and Oxford 5K — measuring the trade-off between retrieval accuracy and security parameters.
-
-[PAUSE — look at audience]
-
-That concludes my technical presentation."
-
-**[CLICK to next slide]**`,
-            questions_text: "",
-            extra_notes_text: ""
-        },
-        {
-            id: 20,
-            title: "References",
-            body_text: `References:
-
-1. Wong, W. K., Cheung, D. W., Kao, B., & Mamoulis, N. (2009). 
-   Secure kNN computation on encrypted databases. SIGMOD.
-
-2. Regev, O. (2009). On lattices, learning with errors, random 
-   linear codes, and cryptography. Journal of the ACM, 56(6).
-
-3. Radford, A., et al. (2021). Learning transferable visual models 
-   from natural language supervision. ICML.
-
-4. NIST Post-Quantum Cryptography Standardization (2024).`,
-            speaker_notes_text: `"These are the key references underlying my presentation.
-
-[PAUSE — only if asked]
-
-Wong et al. for ASPE. Regev's foundational paper on LWE. Radford et al. for CLIP. And the NIST post-quantum standards that validate the practical relevance of lattice-based cryptography."
-
-**[CLICK to next slide]**`,
-            questions_text: "",
-            extra_notes_text: ""
-        },
-        {
-            id: 21,
-            title: "Questions",
-            body_text: `Questions & Discussion
-
-
-
-Eng: Ahmed Mohamed Elsayed
-
-Thank you for your attention.`,
-            speaker_notes_text: `"Thank you for your attention.
-
-[PAUSE — look around the room]
-
-I am happy to take any questions."`,
-            questions_text: "",
-            extra_notes_text: ""
-        },
-        {
-            id: 22,
-            title: "HANDLING COMMON QUESTIONS",
-            body_text: `Q&A Reference Section
-
-This section contains prepared responses for common questions that may arise during the presentation discussion.`,
-            speaker_notes_text: ``,
-            questions_text: `If asked: "What is the main contribution of your research?"
-
-"The main contribution I am working toward is a **practical LWE-based scheme** for secure image retrieval that addresses the limitations of existing approaches like ASPE — specifically, providing security against known-plaintext attacks and post-quantum adversaries, while maintaining acceptable retrieval accuracy through careful quantization of CLIP embeddings."
-
----
-
-If asked: "What are the limitations of your approach?"
-
-"There are two main challenges I am still addressing. First, the **quantization introduces error**, so there is a trade-off between precision and efficiency that I am working to optimize. Second, LWE-based encryption has **higher computational overhead** than ASPE, so I am investigating ways to reduce dimension and improve efficiency while maintaining security."
-
----
-
-If asked: "Why CLIP specifically?"
-
-"CLIP provides **state-of-the-art semantic representations** for images. More importantly for my work, CLIP embeddings are **normalized**, which means cosine similarity reduces to a simple inner product. This simplifies the cryptographic protocol significantly, as I only need to preserve inner products rather than more complex distance metrics."
-
----
-
-If asked about the qualification exam delay:
-
-"The delay was due to departmental scheduling. However, it gave me additional time to deepen my technical investigation — particularly the quantization challenge and LWE security analysis that I presented today. I am now prepared to proceed with the examination this semester."`,
-            extra_notes_text: ""
+    // ===== SLIDE DATA (WILL BE LOADED FROM PRESENTATION.TXT) =====
+    let slidesData = [];
+    let commonQuestionsContent = '';
+    let showingCommonQuestions = false;
+
+    // ===== PARSE PRESENTATION.TXT CONTENT =====
+    function parsePresentationContent(content) {
+        const slides = [];
+        let handlingQuestionsSection = '';
+        
+        // Extract the "HANDLING COMMON QUESTIONS" section
+        const handlingQuestionsMatch = content.match(/# HANDLING COMMON QUESTIONS\s*([\s\S]*?)(?:\*\*END OF PRESENTATION PACKAGE\*\*|$)/i);
+        if (handlingQuestionsMatch) {
+            handlingQuestionsSection = handlingQuestionsMatch[1].trim();
         }
-    ];
+        commonQuestionsContent = handlingQuestionsSection;
+        
+        // Split content by slide markers
+        const slideRegex = /# SLIDE (\d+): ([^\n]+)/g;
+        const slideMatches = [...content.matchAll(slideRegex)];
+        
+        for (let i = 0; i < slideMatches.length; i++) {
+            const match = slideMatches[i];
+            const slideNumber = parseInt(match[1]);
+            const slideTitle = match[2].trim();
+            
+            // Get content between this slide and the next (or end of slides section)
+            const startIndex = match.index + match[0].length;
+            let endIndex;
+            if (i < slideMatches.length - 1) {
+                endIndex = slideMatches[i + 1].index;
+            } else {
+                // For the last slide, stop at "HANDLING COMMON QUESTIONS"
+                const handlingIndex = content.indexOf('# HANDLING COMMON QUESTIONS');
+                endIndex = handlingIndex > startIndex ? handlingIndex : content.length;
+            }
+            
+            const slideContent = content.substring(startIndex, endIndex);
+            
+            // Extract body text (Slide Content section)
+            let bodyText = '';
+            const contentMatch = slideContent.match(/## Slide Content:\s*```\s*([\s\S]*?)```/);
+            if (contentMatch) {
+                bodyText = contentMatch[1].trim();
+            }
+            
+            // Extract speaker notes (The Script section)
+            let speakerNotes = '';
+            const scriptMatch = slideContent.match(/## The Script:\s*([\s\S]*?)(?=\*\*\[CLICK to next slide\]\*\*|---|\n# |$)/);
+            if (scriptMatch) {
+                speakerNotes = scriptMatch[1].trim();
+                // Clean up the speaker notes - remove trailing click instruction if present
+                speakerNotes = speakerNotes.replace(/\*\*\[CLICK to next slide\]\*\*\s*$/, '').trim();
+            }
+            
+            slides.push({
+                id: slideNumber,
+                title: slideTitle,
+                body_text: bodyText,
+                speaker_notes_text: speakerNotes,
+                questions_text: slideNumber === 22 ? handlingQuestionsSection : '',
+                extra_notes_text: ''
+            });
+        }
+        
+        return slides;
+    }
+
+    // ===== LOAD PRESENTATION FROM FILE =====
+    async function loadPresentation() {
+        try {
+            const response = await fetch('presentation.txt');
+            if (!response.ok) {
+                throw new Error('Failed to load presentation.txt');
+            }
+            const content = await response.text();
+            slidesData = parsePresentationContent(content);
+            console.log('Loaded', slidesData.length, 'slides from presentation.txt');
+            init();
+        } catch (error) {
+            console.error('Error loading presentation:', error);
+            // Show error message to user
+            document.getElementById('slideDisplay').innerHTML = `
+                <div style="padding: 2rem; text-align: center; color: var(--error-color);">
+                    <h2>Error Loading Presentation</h2>
+                    <p>Could not load presentation.txt. Please ensure the file is in the same directory.</p>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary);">${error.message}</p>
+                </div>
+            `;
+        }
+    }
 
     // ===== APPLICATION STATE =====
     const state = {
@@ -1687,25 +801,7 @@ If asked about the qualification exam delay:
     };
 
     // ===== DOM ELEMENTS =====
-    const elements = {
-        slidesList: document.getElementById('slidesList'),
-        slideDisplay: document.getElementById('slideDisplay'),
-        notesContent: document.getElementById('notesContent'),
-        searchInput: document.getElementById('searchInput'),
-        searchResults: document.getElementById('searchResults'),
-        progressFill: document.getElementById('progressFill'),
-        progressText: document.getElementById('progressText'),
-        prevBtn: document.getElementById('prevBtn'),
-        nextBtn: document.getElementById('nextBtn'),
-        helpBtn: document.getElementById('helpBtn'),
-        modalOverlay: document.getElementById('modalOverlay'),
-        modalClose: document.getElementById('modalClose'),
-        sidebar: document.getElementById('sidebar'),
-        notesPanel: document.getElementById('notesPanel'),
-        sidebarToggle: document.getElementById('sidebarToggle'),
-        notesToggle: document.getElementById('notesToggle'),
-        tabBtns: document.querySelectorAll('.tab-btn')
-    };
+    let elements = {};
 
     // ===== UTILITY FUNCTIONS =====
     function escapeRegex(string) {
@@ -1921,9 +1017,35 @@ If asked about the qualification exam delay:
         });
     }
 
+    // ===== SHOW COMMON QUESTIONS =====
+    function showCommonQuestions() {
+        showingCommonQuestions = true;
+        
+        // Update notes content to show common questions
+        let content = '';
+        if (commonQuestionsContent) {
+            let questionsHtml = escapeHtml(commonQuestionsContent);
+            if (state.searchQuery) {
+                questionsHtml = highlightText(questionsHtml, state.searchQuery);
+            }
+            content = `
+                <div style="margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color);">
+                    <h3 style="color: var(--accent-color); margin-bottom: 0.5rem;">📋 Handling Common Questions</h3>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary);">Click Next/Previous or Help to return to normal slide view.</p>
+                </div>
+                <div class="notes-text">${questionsHtml}</div>
+            `;
+        } else {
+            content = '<p class="notes-empty">No common questions section found in presentation.</p>';
+        }
+        
+        elements.notesContent.innerHTML = content;
+    }
+
     // ===== NAVIGATION FUNCTIONS =====
     function goToSlide(index) {
         if (index >= 0 && index < slidesData.length) {
+            showingCommonQuestions = false; // Reset when navigating
             state.currentSlide = index;
             renderSlidesList();
             renderSlideContent();
@@ -1939,10 +1061,12 @@ If asked about the qualification exam delay:
     }
 
     function nextSlide() {
+        showingCommonQuestions = false;
         goToSlide(state.currentSlide + 1);
     }
 
     function prevSlide() {
+        showingCommonQuestions = false;
         goToSlide(state.currentSlide - 1);
     }
 
@@ -2021,6 +1145,28 @@ If asked about the qualification exam delay:
 
     // ===== INITIALIZE =====
     function init() {
+        // Initialize DOM elements
+        elements = {
+            slidesList: document.getElementById('slidesList'),
+            slideDisplay: document.getElementById('slideDisplay'),
+            notesContent: document.getElementById('notesContent'),
+            searchInput: document.getElementById('searchInput'),
+            searchResults: document.getElementById('searchResults'),
+            progressFill: document.getElementById('progressFill'),
+            progressText: document.getElementById('progressText'),
+            prevBtn: document.getElementById('prevBtn'),
+            nextBtn: document.getElementById('nextBtn'),
+            questionsBtn: document.getElementById('questionsBtn'),
+            helpBtn: document.getElementById('helpBtn'),
+            modalOverlay: document.getElementById('modalOverlay'),
+            modalClose: document.getElementById('modalClose'),
+            sidebar: document.getElementById('sidebar'),
+            notesPanel: document.getElementById('notesPanel'),
+            sidebarToggle: document.getElementById('sidebarToggle'),
+            notesToggle: document.getElementById('notesToggle'),
+            tabBtns: document.querySelectorAll('.tab-btn')
+        };
+
         // Render initial state
         renderSlidesList();
         renderSlideContent();
@@ -2031,7 +1177,11 @@ If asked about the qualification exam delay:
         // Attach event listeners
         elements.prevBtn.addEventListener('click', prevSlide);
         elements.nextBtn.addEventListener('click', nextSlide);
-        elements.helpBtn.addEventListener('click', () => toggleModal(true));
+        elements.questionsBtn.addEventListener('click', showCommonQuestions);
+        elements.helpBtn.addEventListener('click', () => {
+            showingCommonQuestions = false;
+            toggleModal(true);
+        });
         elements.modalClose.addEventListener('click', () => toggleModal(false));
         elements.modalOverlay.addEventListener('click', (e) => {
             if (e.target === elements.modalOverlay) toggleModal(false);
@@ -2040,7 +1190,10 @@ If asked about the qualification exam delay:
         elements.searchInput.addEventListener('input', handleSearch);
         
         elements.tabBtns.forEach(btn => {
-            btn.addEventListener('click', () => handleTabChange(btn.dataset.tab));
+            btn.addEventListener('click', () => {
+                showingCommonQuestions = false;
+                handleTabChange(btn.dataset.tab);
+            });
         });
 
         elements.sidebarToggle?.addEventListener('click', toggleSidebar);
@@ -2051,8 +1204,8 @@ If asked about the qualification exam delay:
         console.log('Dashboard initialized with', slidesData.length, 'slides');
     }
 
-    // Start the application
-    init();
+    // Start the application by loading presentation
+    loadPresentation();
     </script>
 </body>
 </html>
