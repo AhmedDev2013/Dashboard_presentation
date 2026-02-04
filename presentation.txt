@@ -446,37 +446,38 @@ Database Vector Extension:
    p̂ = [p₁, p₂, ..., pᵈ, -½||p||²]ᵀ ∈ ℝᵈ⁺¹
 
 Query Vector Extension:
-   q̂ = [q₁, q₂, ..., qᵈ, r]ᵀ ∈ ℝᵈ⁺¹
+   q̂ = [r·q₁, r·q₂, ..., r·qᵈ, r]ᵀ ∈ ℝᵈ⁺¹
    
    where r > 0 is a random positive scalar (fresh for each query)
 
 Extended Scalar Product:
-   p̂ · q̂ = p · q − (r/2)||p||²
+   p̂ · q̂ = r(p · q) − (r/2)||p||²
+         = r(p · q − ½||p||²)
 ```
 
 ## The Script:
 
-"The first step in ASPE is **vector extension**.
+"The first step in ASPE is vector extension.
 
 [PAUSE]
 
-We take our original d-dimensional vectors and extend them to d **plus one** dimensions.
+We take our original d-dimensional vectors and extend them to d plus one dimensions.
 
 [PAUSE — point to database formula]
 
-For **database vectors**, we append a special value: **negative one-half times the squared norm** of the vector. So if we have a vector p, we add the term negative one-half times p squared.
+For database vectors, we append a special value: negative one-half times the squared norm of the vector.
 
 [PAUSE — point to query formula]
 
-For **query vectors**, we append a **random positive scalar** r. And importantly, this r is chosen **freshly for each query**. This randomization is part of what provides security.
+For query vectors, we multiply the entire vector by a random positive scalar r, and then append r as the final coordinate. Importantly, r is chosen freshly for each query.
 
 [PAUSE — point to result]
 
-Now, when we compute the scalar product of these extended vectors, we get: the original inner product **p dot q**, minus **r over 2** times the squared norm of p.
+Now, when we compute the scalar product of these extended vectors, the factor r scales the entire result. We get r times the quantity: p dot q minus one-half the squared norm of p.
 
 [PAUSE]
 
-This extended scalar product encodes **both** the similarity information **and** the norm information we need for distance comparison — all in a single value.
+Because r is positive, it scales the values but preserves their relative order, which is exactly what we need for ranking.
 
 [PAUSE — transition voice]
 
@@ -564,38 +565,38 @@ Derivation:
                     = p̂₁ · q̂ − p̂₂ · q̂
                     
 Expanding:
-   = (p₁ · q − r/2||p₁||²) − (p₂ · q − r/2||p₂||²)
-   = (p₁ − p₂) · q + r/2(||p₂||² − ||p₁||²)
+   = r(p₁ · q − ½||p₁||²) − r(p₂ · q − ½||p₂||²)
+   = r [ (p₁ − p₂) · q + ½(||p₂||² − ||p₁||²) ]
 
-This is the standard distance comparison criterion.
+This is the standard distance comparison criterion (scaled by r).
 ```
 
 ## The Script:
 
-"So how do we actually **use** this for search?
+"So how do we actually use this for search?
 
 [PAUSE — point to main formula]
 
-Here is the protocol. Given two encrypted database points and an encrypted query, we compute this expression: **p-prime-one minus p-prime-two, dotted with q-prime**.
+Here is the protocol. Given two encrypted database points and an encrypted query, we compute this expression: p-prime-one minus p-prime-two, dotted with q-prime.
 
-If the result is **positive**, then p-two is **farther** from the query than p-one.
-If the result is **negative**, then p-one is farther.
+If the result is positive, then p-two is farther from the query than p-one.
+If the result is negative, then p-one is farther.
 
 [PAUSE]
 
-In other words, we can determine **which database point is closer to the query** — without decrypting anything.
+In other words, we can determine which database point is closer to the query — without decrypting anything.
 
 [PAUSE — gesture to derivation]
 
-The derivation is shown here. Because scalar products are preserved, this encrypted comparison reduces to exactly the same expression we would use for **unencrypted** distance comparison.
+The derivation is shown here. Because scalar products are preserved, this encrypted comparison reduces to the standard distance comparison criterion, just scaled by the random factor r.
 
 [PAUSE]
 
-The server can rank all database points by distance to the query, return the top-k results — all while seeing only **encrypted** values.
+Since r is positive, it doesn't flip the sign. The server can rank all database points by distance to the query correctly.
 
 [PAUSE — slower, transition voice]
 
-Now... ASPE is elegant. And it works. But it has **limitations** that motivated me to explore a different approach.
+Now... ASPE is elegant. And it works. But it has limitations that motivated me to explore a different approach.
 
 Let me explain."
 
@@ -603,7 +604,38 @@ Let me explain."
 
 ---
 
-# SLIDE 14: Motivation for Lattice-Based Approaches
+# SLIDE 14: Why ASPE Fails Under Level-3 (Known-Plaintext) Attacks
+
+## Slide Content:
+
+```
+Core weakness:
+• ASPE is a linear, deterministic matrix transformation
+
+Database encryption (deterministic):
+• p' = Mᵀ p̂
+• If attacker knows plaintext p ⇒ can compute extended plaintext p̂
+
+Key recovery from known pairs:
+• Collect (d+1) linearly independent plaintext-ciphertext pairs:
+     (p̂₁, p'₁), (p̂₂, p'₂), ..., (p̂_{d+1}, p'_{d+1})
+
+• Stack them as matrices:
+     P̂ = [p̂₁ … p̂_{d+1}]    and    P' = [p'₁ … p'_{d+1}]
+
+• Then:
+     P' = Mᵀ P̂   ⇒   Mᵀ = P' (P̂)⁻¹
+
+Consequence:
+• Recover M ⇒ decrypt database vectors and break privacy
+• Random r in queries does NOT fix this (database lane already leaks M)
+```
+
+**[CLICK to next slide]**
+
+---
+
+# SLIDE 15: Motivation for Lattice-Based Approaches
 
 ## Slide Content:
 
@@ -653,7 +685,7 @@ Let me walk you through it."
 
 ---
 
-# SLIDE 15: LWE — The Hardness Foundation
+# SLIDE 16: LWE — The Hardness Foundation
 
 ## Slide Content:
 
@@ -708,7 +740,7 @@ The answer is yes — and the modification is surprisingly simple."
 
 ---
 
-# SLIDE 16: LWE — Introducing Computational Hardness
+# SLIDE 17: LWE — Introducing Computational Hardness
 
 ## Slide Content:
 
@@ -764,7 +796,7 @@ Let me make this concrete with a numerical example."
 
 ---
 
-# SLIDE 17: LWE — Numerical Example
+# SLIDE 18: LWE — Numerical Example
 
 ## Slide Content:
 
@@ -824,7 +856,7 @@ Now let me show you how we build an encryption scheme on top of this."
 
 ---
 
-# SLIDE 18: LWE — Key Generation
+# SLIDE 19: LWE — Key Generation
 
 ## Slide Content:
 
@@ -886,7 +918,7 @@ Now let us see how Bob uses this public key to encrypt a message."
 
 ---
 
-# SLIDE 19: LWE — Encryption Protocol
+# SLIDE 20: LWE — Encryption Protocol
 
 ## Slide Content:
 
@@ -941,7 +973,7 @@ Let me show you how Alice decrypts."
 
 ---
 
-# SLIDE 20: LWE — Decryption Protocol
+# SLIDE 21: LWE — Decryption Protocol
 
 ## Slide Content:
 
@@ -1003,7 +1035,7 @@ Now, this shows LWE encryption for a **single bit**. For my research, I need to 
 
 ---
 
-# SLIDE 21: Integer Quantization Challenge
+# SLIDE 22: Integer Quantization Challenge
 
 ## Slide Content:
 
@@ -1066,7 +1098,7 @@ Let me address that."
 
 ---
 
-# SLIDE 22: Preserving Cosine Similarity Under Quantization
+# SLIDE 23: Preserving Cosine Similarity Under Quantization
 
 ## Slide Content:
 
@@ -1132,7 +1164,7 @@ With this understanding, let me show you how all the pieces fit together in my p
 
 ---
 
-# SLIDE 23: Proposed Scheme — High-Level Architecture
+# SLIDE 24: Proposed Scheme — High-Level Architecture
 
 ## Slide Content:
 
@@ -1192,7 +1224,7 @@ Now let me summarize why this LWE-based approach is superior to ASPE."
 
 ---
 
-# SLIDE 24: Security Analysis — Comparison
+# SLIDE 25: Security Analysis — Comparison
 
 ## Slide Content:
 
@@ -1241,7 +1273,7 @@ Let me now summarize where my research stands."
 
 ---
 
-# SLIDE 25: Research Progress Summary
+# SLIDE 26: Research Progress Summary
 
 ## Slide Content:
 
@@ -1287,7 +1319,7 @@ That concludes my technical presentation."
 
 ---
 
-# SLIDE 26: References
+# SLIDE 27: References
 
 ## Slide Content:
 
@@ -1318,7 +1350,7 @@ Wong et al. for ASPE. Regev's foundational paper on LWE. Radford et al. for CLIP
 
 ---
 
-# SLIDE 27: Questions
+# SLIDE 28: Questions
 
 ## Slide Content:
 
