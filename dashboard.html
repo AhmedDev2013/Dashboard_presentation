@@ -846,32 +846,73 @@
     function renderSlidesList() {
         const query = state.searchQuery.toLowerCase();
         let matchCount = 0;
+        let matchingSlides = [];
         
-        elements.slidesList.innerHTML = slidesData.map((slide, index) => {
+        // First pass: identify matching slides
+        slidesData.forEach((slide, index) => {
             const searchableText = getSlideSearchableText(slide).toLowerCase();
             const hasMatch = query && searchableText.includes(query);
-            if (hasMatch) matchCount++;
-            
-            const isActive = index === state.currentSlide;
+            if (hasMatch) {
+                matchCount++;
+                matchingSlides.push(index);
+            }
+        });
+        
+        // Generate slide list - filter if there's a query, otherwise show all
+        const slidesToShow = query ? slidesData.filter((slide, index) => matchingSlides.includes(index)) : slidesData;
+        
+        elements.slidesList.innerHTML = slidesToShow.map((slide) => {
+            const originalIndex = slidesData.indexOf(slide);
+            const isActive = originalIndex === state.currentSlide;
             const preview = slide.body_text.split('\n')[0].substring(0, 60);
+            
+            // Highlight search term in title if query exists
+            let titleHtml = escapeHtml(slide.title);
+            let previewHtml = escapeHtml(preview);
+            if (query) {
+                titleHtml = highlightText(titleHtml, state.searchQuery);
+                previewHtml = highlightText(previewHtml, state.searchQuery);
+            }
             
             return `
                 <div 
-                    class="slide-item ${isActive ? 'active' : ''} ${hasMatch ? 'has-match' : ''}"
-                    data-index="${index}"
+                    class="slide-item ${isActive ? 'active' : ''} has-match"
+                    data-index="${originalIndex}"
                     role="option"
                     aria-selected="${isActive}"
                     tabindex="0"
                 >
                     <div class="slide-item-number">SLIDE ${slide.id}</div>
-                    <div class="slide-item-title">${escapeHtml(slide.title)}</div>
-                    <div class="slide-item-preview">${escapeHtml(preview)}...</div>
+                    <div class="slide-item-title">${titleHtml}</div>
+                    <div class="slide-item-preview">${previewHtml}...</div>
                 </div>
             `;
         }).join('');
+        
+        // If no query, re-render without has-match class
+        if (!query) {
+            elements.slidesList.innerHTML = slidesData.map((slide, index) => {
+                const isActive = index === state.currentSlide;
+                const preview = slide.body_text.split('\n')[0].substring(0, 60);
+                
+                return `
+                    <div 
+                        class="slide-item ${isActive ? 'active' : ''}"
+                        data-index="${index}"
+                        role="option"
+                        aria-selected="${isActive}"
+                        tabindex="0"
+                    >
+                        <div class="slide-item-number">SLIDE ${slide.id}</div>
+                        <div class="slide-item-title">${escapeHtml(slide.title)}</div>
+                        <div class="slide-item-preview">${escapeHtml(preview)}...</div>
+                    </div>
+                `;
+            }).join('');
+        }
 
         if (query) {
-            elements.searchResults.textContent = `${matchCount} slide${matchCount !== 1 ? 's' : ''} match "${query}"`;
+            elements.searchResults.textContent = `${matchCount} slide${matchCount !== 1 ? 's' : ''} match "${state.searchQuery}"`;
         } else {
             elements.searchResults.textContent = '';
         }

@@ -11,7 +11,6 @@ Privacy-Preserving Content-Based Image Retrieval:
 Cryptographic Foundations for Secure Cloud-Aided Similarity Search
 
 Eng: Ahmed Mohamed Elsayed
-PhD Research — Technical Presentation
 ```
 
 ## The Script:
@@ -129,13 +128,13 @@ Design Principle:
 • Selectively preserves ONLY scalar products necessary for distance comparison
 
 Scalar Product Classification:
-┌──────────┬─────────────────────────────────┬────────────┐
-│ Type     │ Relationship                    │ Preserved? │
-├──────────┼─────────────────────────────────┼────────────┤
-│ Type-1   │ Database · Database (pᵢ · pⱼ)   │ ✗ Concealed│
-│ Type-2   │ Database · Query (pᵢ · q)       │ ✓ Preserved│
-│ Type-3   │ Query · Query (q · q)           │ ✗ Concealed│
-└──────────┴─────────────────────────────────┴────────────┘
+┌──────────┬─────────────────────────────────┬─────────────┐
+│ Type     │ Relationship                    │ Preserved?  │
+├──────────┼─────────────────────────────────┼─────────────┤
+│ Type-1   │ Database · Database (pᵢ · pⱼ)   │ ✗ Concealed │
+│ Type-2   │ Database · Query (pᵢ · q)       │ ✓ Preserved │
+│ Type-3   │ Query · Query (q · q)           │ ✗ Concealed │
+└──────────┴─────────────────────────────────┴─────────────┘
 ```
 
 ## The Script:
@@ -917,14 +916,14 @@ Now let me summarize why this LWE-based approach is superior to ASPE."
 
 ## Slide Content:
 ```
-┌─────────────────────────────────┬──────────┬─────────────────┐
-│ Attack Type                     │   ASPE   │ LWE-Based       │
-├─────────────────────────────────┼──────────┼─────────────────┤
-│ Ciphertext-only (Level-1)       │ ✓ Secure │ ✓ Secure        │
-│ Known-sample (Level-2)          │ ✓ Secure │ ✓ Secure        │
-│ Known-plaintext (Level-3)       │ ✗ Vulnerable │ ✓ Secure    │
-│ Quantum Adversary               │ ✗ Vulnerable │ ✓ Secure    │
-└─────────────────────────────────┴──────────┴─────────────────┘
+┌─────────────────────────────────┬──────────────┬──────────────┐
+│ Attack Type                     │     ASPE     │  LWE-Based   │
+├─────────────────────────────────┼──────────────┼──────────────┤
+│ Ciphertext-only (Level-1)       │  ✓ Secure    │  ✓ Secure    │
+│ Known-sample (Level-2)          │  ✓ Secure    │  ✓ Secure    │
+│ Known-plaintext (Level-3)       │ ✗ Vulnerable │  ✓ Secure    │
+│ Quantum Adversary               │ ✗ Vulnerable │  ✓ Secure    │
+└─────────────────────────────────┴──────────────┴──────────────┘
 
 LWE Security Foundation:
 • Breaking scheme → Solving Decision-LWE
