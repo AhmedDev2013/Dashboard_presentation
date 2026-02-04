@@ -31,9 +31,10 @@ Let's begin."
 
 ---
 
-# SLIDE 2: Research Context & Motivation
+## SLIDE 2: Problem Setting
 
 ## Slide Content:
+
 ```
 Problem Setting:
 • Cloud-based image retrieval requires outsourcing feature vectors to untrusted servers
@@ -78,6 +79,7 @@ Now, before we discuss encryption, we need to understand **what** we are encrypt
 # SLIDE 3: CLIP Embeddings
 
 ## Slide Content:
+
 ```
 Contrastive Language-Image Pre-training (CLIP):
 • Produces semantically rich d-dimensional feature vectors (d = 512 or 768)
@@ -112,15 +114,280 @@ This is important because it tells us exactly what our encryption scheme needs t
 
 [PAUSE — transition voice]
 
-And that brings us to our first encryption scheme: ASPE."
+Now, before we jump into encryption, I want to show you how both **cosine similarity** and **Euclidean k-nearest-neighbor search** can be mapped to the same primitive: the **dot product**."
 
 **[CLICK to next slide]**
 
 ---
 
-# SLIDE 4: ASPE — Overview
+# SLIDE 4: Dot Product = The Core Computation Primitive
 
 ## Slide Content:
+
+```
+Dot Product (Inner Product):
+• Given vectors x, q ∈ ℝᵈ:
+     x · q =  Σᵢ xᵢ qᵢ
+
+Interpretation:
+• Measures alignment between two vectors
+• Larger value ⇒ more “pointing in the same direction”
+
+Why we care:
+• Many similarity / distance measures reduce to inner products
+• If we can compute x · q securely, we can support retrieval securely
+```
+
+## The Script:
+
+“Before we talk about cosine or distance, I want to introduce the **dot product** as the core computation.
+
+[PAUSE]
+
+Given two vectors — a database vector **x** and a query vector **q** — the dot product is simply: multiply coordinate-by-coordinate, then sum everything up.
+
+[PAUSE — gesture to interpretation]
+
+Conceptually, it’s an **alignment score**. Bigger dot product means the vectors are more aligned — more semantically similar in embedding space.
+
+[PAUSE]
+
+And here’s the key idea: a lot of similarity and distance objectives in retrieval can be rewritten as **inner products** — sometimes directly, sometimes after small preprocessing.
+
+[PAUSE — transition voice]
+
+So next, let’s connect this to cosine similarity.”
+
+**[CLICK to next slide]**
+
+---
+
+# SLIDE 5: Cosine Similarity Collapses to Dot Product (Normalization)
+
+## Slide Content:
+
+```
+Cosine Similarity:
+• cos(x, q) = (x · q) / (||x||₂ ||q||₂)
+
+Normalization:
+• Define unit vectors:  x̂ = x / ||x||₂   and   q̂ = q / ||q||₂
+• Then:  cos(x, q) = x̂ · q̂
+
+CLIP Connection:
+• CLIP embeddings are L2-normalized: ||p||₂ = 1
+• So similarity is simply:  sim(p, q) = p · q
+```
+
+## The Script:
+
+“Cosine similarity is the standard similarity measure used for embeddings.
+
+[PAUSE]
+
+By definition, cosine similarity is the dot product divided by the product of the vector norms.
+
+[PAUSE — point to normalization lines]
+
+Now if we **normalize** both vectors — meaning we force each vector to have length 1 — the denominator becomes 1, and cosine similarity becomes **just the dot product** of the normalized vectors.
+
+[PAUSE — connect back to CLIP]
+
+And with CLIP, we get this for free: CLIP embeddings are already **L2-normalized**. So the similarity score we want is literally just **p dot q**.
+
+[PAUSE — transition voice]
+
+Now the next step is to show something slightly surprising: even Euclidean nearest-neighbor search can collapse to dot products too.”
+
+**[CLICK to next slide]**
+
+---
+
+# SLIDE 6: Euclidean kNN → Dot Product (When Norms Are Fixed)
+
+## Slide Content:
+
+```
+k-Nearest Neighbor (kNN) with Euclidean Distance:
+• Retrieve x that minimizes ||x − q||₂
+
+Use squared distance (same ranking):
+• ||x − q||₂² = ||x||₂² + ||q||₂² − 2(x · q)
+
+If norms are fixed (e.g., unit vectors):
+• ||x||₂² is constant over the database
+• ||q||₂² is constant for a given query
+
+Ranking equivalence:
+• argminₓ ||x − q||₂²   ≡   argmaxₓ (x · q)
+```
+
+## The Script:
+
+“Let’s say we do k-nearest neighbors using Euclidean distance: we want the vectors **closest** to the query.
+
+[PAUSE]
+
+We usually work with **squared** Euclidean distance because it gives the same ranking — it just avoids the square root.
+
+[PAUSE — point to expansion]
+
+If we expand the squared distance, we get three terms: the norm of **x**, the norm of **q**, and minus two times the dot product.
+
+[PAUSE]
+
+Now here’s the payoff: if the database vectors all have the **same norm** — and especially if they are **unit vectors** — then those norm terms are constants during ranking.
+
+So minimizing Euclidean distance becomes the same as **maximizing the dot product**.
+
+[PAUSE — transition voice]
+
+But what if we don’t want to assume fixed norms? Then we can still reduce distance to dot product — exactly — by extending the vectors.”
+
+**[CLICK to next slide]**
+
+---
+
+# SLIDE 7: Exact Euclidean Reduction via Vector Extension (Lifting Trick)
+
+## Slide Content:
+
+```
+Goal:
+• Express squared Euclidean distance as a dot product in higher dimension
+
+Define extended vectors:
+• Data vector:   φ(x) = ( ||x||₂² ,  x ,  1 )
+• Query vector:  ψ(q) = ( 1 ,  −2q ,  ||q||₂² )
+
+Dot product equals distance:
+• φ(x) · ψ(q) = ||x||₂² − 2(x · q) + ||q||₂²
+              = ||x − q||₂²
+
+Implication:
+• Euclidean kNN can be performed using only dot products (after lifting)
+```
+
+## The Script:
+
+“Now we’ll do the exact reduction — no assumptions about fixed norms.
+
+[PAUSE]
+
+We’ll create an **extended** version of each vector. For a database vector **x**, we build φ(x) by concatenating three parts: its squared norm, the vector itself, and a constant 1.
+
+For the query **q**, we build ψ(q) with: a 1, then −2 times the query vector, then the query’s squared norm.
+
+[PAUSE — point to the equality]
+
+When we take the dot product of these extended vectors, it expands to exactly the squared Euclidean distance:
+||x||² − 2(x·q) + ||q||².
+
+So **distance** becomes a **single dot product** — just in a slightly larger space.
+
+[PAUSE — transition voice]
+
+At this point, both cosine similarity and Euclidean distance-based kNN are telling us the same story.”
+
+**[CLICK to next slide]**
+
+---
+
+# SLIDE 8: Unifying View — Retrieval Becomes “Dot-Product Search”
+
+## Slide Content:
+
+```
+One Primitive, Multiple Objectives:
+• Cosine similarity (normalized vectors):  sim(p, q) = p · q
+• Euclidean kNN (fixed norms):            argmin ||x − q||² ≡ argmax (x · q)
+• Euclidean kNN (general norms):          ||x − q||² = φ(x) · ψ(q)
+
+Practical takeaway:
+• We can implement ANN retrieval as:
+     “compute many dot products + return top-k”
+• So the security target becomes clear: preserve dot-product structure
+```
+
+## The Script:
+
+“Here’s the unifying view.
+
+[PAUSE]
+
+Cosine similarity with normalized embeddings is dot product.
+Euclidean nearest-neighbor search with normalized data is dot product ranking.
+And even without normalization, Euclidean distance can be written **exactly** as a dot product after lifting.
+
+[PAUSE — point to takeaway]
+
+So operationally, retrieval becomes: compute dot products between the query and many candidates, then return the top-k.
+
+[PAUSE]
+
+That means the cryptographic question becomes sharply defined:
+
+Can we let an untrusted server compute these dot products — or their rankings — **without learning what the vectors mean**?
+
+[PAUSE — transition voice]
+
+Now I’ll state precisely what must be preserved, and what leakage we are trying to avoid.”
+
+**[CLICK to next slide]**
+
+---
+
+# SLIDE 9: What the Encrypted Search Must Preserve
+
+## Slide Content:
+
+```
+What the server needs to do:
+• Given encrypted database vectors and an encrypted query:
+   - compute scores consistent with dot products
+   - return top-k nearest neighbors (ANN)
+
+What must remain hidden:
+• Contents of database vectors
+• Contents of queries
+• Sensitive relationships (e.g., similarity structure) beyond what is unavoidable
+
+Design target (from the math):
+• Enable distance / similarity search by supporting:
+   - inner-product evaluation, or
+   - inner-product–consistent ranking
+```
+
+## The Script:
+
+“Now we can clearly state the computational requirement.
+
+[PAUSE]
+
+The server doesn’t need to ‘understand images’ — it needs to compute **scores** that behave like dot products and produce the correct top-k retrieval results.
+
+[PAUSE — gesture to hidden items]
+
+At the same time, we want to hide the content of the database vectors, hide the content of the query, and avoid leaking similarity structure beyond what’s fundamentally unavoidable for search.
+
+[PAUSE]
+
+And because we just reduced cosine similarity and Euclidean distance search to dot products, our design target is straightforward:
+
+We need an encrypted-domain mechanism that supports **inner-product evaluation** or at least **inner-product–consistent ranking**.
+
+[PAUSE — transition voice]
+
+Now let me show our first secure scheme — **ASPE** — and how it achieves this through selective scalar-product preservation.”
+
+**[CLICK to next slide]**
+
+---
+
+# SLIDE 10: ASPE — Overview
+
+## Slide Content:
+
 ```
 Asymmetric Scalar Product-Preserving Encryption (Wong et al., 2009)
 
@@ -167,9 +434,10 @@ Now let me show you **how** ASPE achieves this, starting with how it transforms 
 
 ---
 
-# SLIDE 5: ASPE — Vector Extension
+# SLIDE 11: ASPE — Vector Extension
 
 ## Slide Content:
+
 ```
 Dimension Augmentation:
 • Original vectors p, q ∈ ℝᵈ are extended to ℝᵈ⁺¹
@@ -218,9 +486,10 @@ But we cannot send these extended vectors directly to the server. We need to enc
 
 ---
 
-# SLIDE 6: ASPE — Matrix Transformation
+# SLIDE 12: ASPE — Matrix Transformation
 
 ## Slide Content:
+
 ```
 Secret Key Generation:
 • Generate random invertible matrix M ∈ ℝ⁽ᵈ⁺¹⁾ˣ⁽ᵈ⁺¹⁾
@@ -280,9 +549,10 @@ And this preserved scalar product is exactly what lets us compare distances in t
 
 ---
 
-# SLIDE 7: ASPE — Distance Comparison in Encrypted Domain
+# SLIDE 13: ASPE — Distance Comparison in Encrypted Domain
 
 ## Slide Content:
+
 ```
 Encrypted Comparison Protocol:
 • Given encrypted database points p'₁, p'₂ and encrypted query q':
@@ -333,9 +603,10 @@ Let me explain."
 
 ---
 
-# SLIDE 8: Motivation for Lattice-Based Approaches
+# SLIDE 14: Motivation for Lattice-Based Approaches
 
 ## Slide Content:
+
 ```
 ASPE Limitations for Cloud Deployment:
 
@@ -382,9 +653,10 @@ Let me walk you through it."
 
 ---
 
-# SLIDE 9: LWE — The Hardness Foundation
+# SLIDE 15: LWE — The Hardness Foundation
 
 ## Slide Content:
+
 ```
 The Problem with Exact Linear Systems:
 
@@ -436,9 +708,10 @@ The answer is yes — and the modification is surprisingly simple."
 
 ---
 
-# SLIDE 10: LWE — Introducing Computational Hardness
+# SLIDE 16: LWE — Introducing Computational Hardness
 
 ## Slide Content:
+
 ```
 The LWE Modification:
 • Add small random ERROR term eᵢ to each equation:
@@ -491,9 +764,10 @@ Let me make this concrete with a numerical example."
 
 ---
 
-# SLIDE 11: LWE — Numerical Example
+# SLIDE 17: LWE — Numerical Example
 
 ## Slide Content:
+
 ```
 Setup:
 • Modulus: q = 89
@@ -550,9 +824,10 @@ Now let me show you how we build an encryption scheme on top of this."
 
 ---
 
-# SLIDE 12: LWE — Key Generation
+# SLIDE 18: LWE — Key Generation
 
 ## Slide Content:
+
 ```
 Public Key Generation (Alice):
 
@@ -611,9 +886,10 @@ Now let us see how Bob uses this public key to encrypt a message."
 
 ---
 
-# SLIDE 13: LWE — Encryption Protocol
+# SLIDE 19: LWE — Encryption Protocol
 
 ## Slide Content:
+
 ```
 Objective: Bob encrypts a single bit μ ∈ {0, 1} for Alice
 
@@ -665,9 +941,10 @@ Let me show you how Alice decrypts."
 
 ---
 
-# SLIDE 14: LWE — Decryption Protocol
+# SLIDE 20: LWE — Decryption Protocol
 
 ## Slide Content:
+
 ```
 Input: Alice receives ciphertext CT = (u, v)
 
@@ -726,9 +1003,10 @@ Now, this shows LWE encryption for a **single bit**. For my research, I need to 
 
 ---
 
-# SLIDE 15: Integer Quantization Challenge
+# SLIDE 21: Integer Quantization Challenge
 
 ## Slide Content:
+
 ```
 The Integration Problem:
 • CLIP embeddings are floating-point: p ∈ ℝᵈ with ||p||₂ = 1
@@ -788,9 +1066,10 @@ Let me address that."
 
 ---
 
-# SLIDE 16: Preserving Cosine Similarity Under Quantization
+# SLIDE 22: Preserving Cosine Similarity Under Quantization
 
 ## Slide Content:
+
 ```
 Original Cosine Similarity (Normalized Vectors):
    sim(p, q) = p · q = Σᵢ pᵢqᵢ
@@ -853,9 +1132,10 @@ With this understanding, let me show you how all the pieces fit together in my p
 
 ---
 
-# SLIDE 17: Proposed Scheme — High-Level Architecture
+# SLIDE 23: Proposed Scheme — High-Level Architecture
 
 ## Slide Content:
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                      DATA OWNER                             │
@@ -912,9 +1192,10 @@ Now let me summarize why this LWE-based approach is superior to ASPE."
 
 ---
 
-# SLIDE 18: Security Analysis — Comparison
+# SLIDE 24: Security Analysis — Comparison
 
 ## Slide Content:
+
 ```
 ┌─────────────────────────────────┬──────────────┬──────────────┐
 │ Attack Type                     │     ASPE     │  LWE-Based   │
@@ -960,9 +1241,10 @@ Let me now summarize where my research stands."
 
 ---
 
-# SLIDE 19: Research Progress Summary
+# SLIDE 25: Research Progress Summary
 
 ## Slide Content:
+
 ```
 Completed:
 ✓ Comprehensive literature review on privacy-preserving CBIR
@@ -1005,9 +1287,10 @@ That concludes my technical presentation."
 
 ---
 
-# SLIDE 20: References
+# SLIDE 26: References
 
 ## Slide Content:
+
 ```
 References:
 
@@ -1035,9 +1318,10 @@ Wong et al. for ASPE. Regev's foundational paper on LWE. Radford et al. for CLIP
 
 ---
 
-# SLIDE 21: Questions
+# SLIDE 27: Questions
 
 ## Slide Content:
+
 ```
 Questions & Discussion
 
@@ -1081,7 +1365,3 @@ I am happy to take any questions."
 ## If asked about the qualification exam delay:
 
 "The delay was due to departmental scheduling. However, it gave me additional time to deepen my technical investigation — particularly the quantization challenge and LWE security analysis that I presented today. I am now prepared to proceed with the examination this semester."
-
----
-
-**END OF PRESENTATION PACKAGE**
